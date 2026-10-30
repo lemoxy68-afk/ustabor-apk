@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ustabor</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--tx:#1b2430;--mu:#6b7686;--pr:#e8590c;--ok:#16a34a;--bd:#e3e8ef}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 system-ui,Arial,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:70px}
+header{background:var(--pr);color:#fff;padding:14px 16px;font-size:20px;font-weight:700;position:sticky;top:0;z-index:5}
+main{padding:12px;max-width:640px;margin:auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+h3{margin:0 0 4px;font-size:16px}.mu{color:var(--mu);font-size:13px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;font:inherit;margin:4px 0 10px;background:#fff}
+textarea{min-height:90px}label{font-size:13px;color:var(--mu)}
+button{border:0;border-radius:8px;padding:10px 14px;font:inherit;font-weight:600;background:var(--pr);color:#fff;cursor:pointer}
+button.g{background:#fdebdc;color:var(--pr)}button.r{background:#fde8e8;color:#c62828}button.ok{background:var(--ok)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-block;background:#eef2f8;border-radius:20px;padding:3px 10px;font-size:12px;margin:0 4px 4px 0}
+.chip.m{background:#dcfce7;color:#15803d;font-weight:700}.chip.b{background:#fee2e2;color:#b91c1c;font-weight:700}
+.ck{display:inline-flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--bd);border-radius:20px;padding:6px 12px;margin:0 6px 6px 0;font-size:14px}
+.ck input{width:auto;margin:0}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--bd);display:flex;padding-bottom:env(safe-area-inset-bottom,0)}
+nav a{flex:1;text-align:center;padding:12px 4px;font-size:13px;color:var(--mu);font-weight:600}nav a.on{color:var(--pr)}
+.top{display:flex;align-items:flex-start}
+.th{width:84px;height:84px;object-fit:cover;border-radius:10px;flex:0 0 84px;margin-right:10px}
+.ph0{background:#fdebdc;display:flex;align-items:center;justify-content:center;font-size:30px}
+.gal{display:flex;gap:6px;overflow-x:auto;margin:6px 0}.gal img{height:120px;border-radius:8px}
+.pg{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.pg div{position:relative}
+.pg img{width:90px;height:90px;object-fit:cover;border-radius:8px}
+.pg b{position:absolute;top:2px;right:2px;background:#fff;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;cursor:pointer}
+pre{white-space:pre-wrap;font:inherit;margin:6px 0}
+</style></head><body>
+<header>🔧 Ustabor</header><main id="app"></main><nav id="nav"></nav>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyDOHi3-8hJSdYqL7lb96-wztvtkGDlpsKA",authDomain:"ishtop-caf4b.firebaseapp.com",projectId:"ishtop-caf4b",storageBucket:"ishtop-caf4b.firebasestorage.app",messagingSenderId:"60290763322",appId:"1:60290763322:web:c4676de320e4b1df1c4303"};
+const BASE=["Universal usta","Santexnik","Qumsuvoqchi","Addelchik","Malyar","Elektrik","Bruschatkachi","Beton quyuvchi","Stajkachi","Duradgor","Akfa eshik-deraza ustasi","Tom ustasi","Tunukachi","Svarshik","Kafelchi","Gipsokarton ustasi","Patalokchi","Loy bosuvchi","Pod klyuch usta","Konditsionerchi","Fasad ustasi","Natyajnoy potolok ustasi","Parket / laminat ustasi","Mebel ustasi","Demontaj ustasi","Tozalash xizmati","Beton teshish","Kamera o'rnatuvchi","Kunlik ishchi (xohlagan ish)"];
+const REG=["Namangan shahri","Chortoq","Chust","Kosonsoy","Mingbuloq","Norin","Pop","To'raqo'rg'on","Uchqo'rg'on","Uychi","Yangiqo'rg'on","Boshqa hudud"];
+let me=JSON.parse(localStorage.getItem("um")||"null"),uid=null,ms=[],custom=[],tab="home",ex={},fav=JSON.parse(localStorage.getItem("ufav")||"[]"),rp=JSON.parse(localStorage.getItem("urp")||"[]"),q={t:[],r:[],free:false,src:"",s:"",show:false},P=null,L={role:"client"},db,auth;
+const $=s=>document.querySelector(s),E=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const TR=()=>[...BASE,...custom.filter(c=>!BASE.some(b=>b.toLowerCase()===c.toLowerCase())).sort()];
+const ck=(t,on,f)=>`<label class="ck"><input type="checkbox" data-v="${E(t)}" ${on?"checked":""} onchange="${f}(this)">${E(t)}</label>`;
+const alive=m=>(m.reports||0)<7;
+
+try{firebase.initializeApp(firebaseConfig);db=firebase.firestore();auth=firebase.auth();
+ auth.signInAnonymously().then(u=>{uid=u.user.uid;listen();draw();if(!me)db.collection("u_users").doc(uid).get().then(d=>{if(d.exists){me=d.data();localStorage.setItem("um",JSON.stringify(me));draw()}}).catch(()=>{})}).catch(e=>{alert("Firebase xato: "+e.message);draw()})}
+catch(e){draw()}
+function listen(){
+ db.collection("masters").orderBy("createdAt","desc").limit(300).onSnapshot(s=>{ms=s.docs.map(d=>({id:d.id,...d.data()}));
+  if(tab==="prof"){if(P&&!P.has&&ms.some(m=>m.id===uid)){P=null;draw()}}else draw()});
+ db.collection("trades").onSnapshot(s=>{custom=s.docs.map(d=>d.data().name).filter(Boolean);if(tab!=="prof")draw()})}
+
+function draw(){
+ const nav=[["home","Ustalar"]];
+ if(me?.role==="master")nav.push(["prof","Profilim"]);
+ nav.push(["fav","Saqlangan"],["me","Hisob"]);
+ $("#nav").innerHTML=me?nav.map(([k,t])=>`<a class="${tab===k?"on":""}" onclick="go('${k}')">${t}</a>`).join(""):"";
+ $("#app").innerHTML=!me?loginView():({home:homeView,fav:()=>list(ms.filter(m=>fav.includes(m.id)&&alive(m)),"Saqlangan ustalar yo'q"),prof:profView,me:meView})[tab]();
+}
+function go(t){tab=t;if(t==="prof")P=null;draw();scrollTo(0,0)}
+
+/* ---- kirish ---- */
+function loginView(){return `<div class="card"><h3>Xush kelibsiz!</h3><div class="mu">Ro'yxatdan o'tish bir daqiqa</div><br>
+<div class="row"><button class="${L.role==="master"?"":"g"}" onclick="L.role='master';draw()">Ustaman</button><button class="${L.role==="client"?"":"g"}" onclick="L.role='client';draw()">Usta kerak</button></div><br>
+<label>Ismingiz</label><input id="nm" value="${E(L.name)}">
+<label>Telefon raqam</label><input id="ph" type="tel" placeholder="+998 90 123 45 67" value="${E(L.phone)}">
+<button class="ok" onclick="reg()">Boshlash</button></div>`}
+function reg(){const name=$("#nm").value.trim(),phone=$("#ph").value.replace(/[^\d+]/g,"");L.name=name;L.phone=phone;
+ if(!name||phone.replace(/\D/g,"").length<9)return alert("Ism va telefon raqamni to'g'ri kiriting");
+ me={role:L.role,name,phone};sv();tab=me.role==="master"?"prof":"home";P=null;draw()}
+function sv(){localStorage.setItem("um",JSON.stringify(me));if(db&&uid)db.collection("u_users").doc(uid).set(me)}
+function meView(){return `<div class="card"><h3>${E(me.name)}</h3><div class="mu">${me.role==="master"?"Usta":"Mijoz"} · ${E(me.phone)}</div><br>
+<button class="r" onclick="if(confirm('Chiqasizmi?')){localStorage.removeItem('um');me=null;P=null;L={role:'client'};draw()}">Chiqish</button></div>`}
+
+/* ---- ustalar ro'yxati ---- */
+function qt(el){const v=el.dataset.v;q.t=el.checked?[...q.t,v]:q.t.filter(x=>x!==v);draw()}
+function qr(el){const v=el.dataset.v;q.r=el.checked?[...q.r,v]:q.r.filter(x=>x!==v);draw()}
+function clr(){q.t=[];q.r=[];q.free=false;q.src="";draw()}
+function homeView(){
+ const f=ms.filter(m=>alive(m)&&(!q.t.length||(m.trades||[]).some(t=>q.t.includes(t)))&&(!q.r.length||q.r.includes(m.region))&&(!q.free||m.status!=="busy")&&(!q.src||(q.src==="tg"?!!m.link:!m.link))&&(!q.s||((m.name||"")+(m.about||"")+(m.trades||[]).join(" ")).toLowerCase().includes(q.s.toLowerCase())));
+ f.sort((a,b)=>((a.status==="busy")-(b.status==="busy"))||((b.photos?.length>0)-(a.photos?.length>0)));
+ const n=q.t.length+q.r.length+(q.free?1:0)+(q.src?1:0);
+ return `<div class="card"><input placeholder="Qidirish..." value="${E(q.s)}" onchange="q.s=this.value;draw()" style="margin-bottom:6px">
+ <div class="row"><button class="g" onclick="q.show=!q.show;draw()">Filtr${n?" ("+n+")":""} ▾</button>${n?'<button class="g" onclick="clr()">Tozalash</button>':""}<span class="mu">${f.length} ta usta</span></div>
+ ${q.show?`<br><label>Yo'nalish (bir nechtasini belgilang)</label><div>${TR().map(t=>ck(t,q.t.includes(t),"qt")).join("")}</div>
+ <label>Hudud</label><div>${REG.map(t=>ck(t,q.r.includes(t),"qr")).join("")}</div>
+ <label class="ck"><input type="checkbox" ${q.free?"checked":""} onchange="q.free=this.checked;draw()">Faqat bo'sh ustalar</label>
+ <label>Manba</label><select onchange="q.src=this.value;draw()"><option value="">Hammasi</option><option value="app" ${q.src==="app"?"selected":""}>Ilovada ro'yxatdan o'tganlar</option><option value="tg" ${q.src==="tg"?"selected":""}>Telegram kanallaridan</option></select>`:""}</div>`+list(f,"Ustalar topilmadi")}
+function list(a,empty){return a.length?a.map(mCard).join(""):`<div class="card mu">${empty}</div>`}
+function mCard(m){const o=ex[m.id],ph=(m.phone||"").replace(/[^\d+]/g,""),im=m.photos||[],own=m.id===uid;
+ return `<div class="card"><div class="top">${im[0]?`<img class="th" src="${im[0]}">`:`<div class="th ph0">🔧</div>`}<div style="flex:1"><h3>${E(m.name)}${own?" (siz)":""}</h3>
+ <div>${(m.trades||[]).map(t=>`<span class="chip">${E(t)}</span>`).join("")}</div>
+ <div class="mu">📍 ${E(m.region||"")}${m.exp?` · ${E(m.exp)} yil tajriba`:""}</div>${m.price?`<div>💰 ${E(m.price)}</div>`:""}
+ ${m.status?`<span class="chip ${m.status==="busy"?"b":"m"}">${m.status==="busy"?"Band":"Bo'sh"}</span>`:""}</div></div>
+ ${o?`<pre>${E(m.about||"")}</pre>${im.length?`<div class="gal">${im.map(x=>`<img src="${x}">`).join("")}</div>`:""}${m.phone2?`<div class="mu">Qo'shimcha raqam: ${E(m.phone2)}</div>`:""}`:""}
+ <div class="row" style="margin-top:8px"><button class="g" onclick="ex['${m.id}']=!ex['${m.id}'];draw()">${o?"Yopish":"Batafsil"}</button>
+ ${ph?`<a href="tel:${ph}" onclick="cnt('${m.id}')"><button class="ok">📞 Qo'ng'iroq</button></a><a href="https://t.me/${ph.startsWith("+")?ph:"+"+ph}"><button class="g">Telegram</button></a>`:""}
+ ${m.link?`<a href="${E(m.link)}" target="_blank"><button class="g">Asl e'lon</button></a>`:""}
+ <button class="g" onclick="fv('${m.id}')">${fav.includes(m.id)?"♥":"♡"}</button>${own?"":`<button class="r" onclick="rep('${m.id}')">Shikoyat</button>`}</div>
+ ${m.link?`<div class="mu">Manba: ${E(m.source||"Telegram")}</div>`:""}</div>`}
+function fv(id){fav=fav.includes(id)?fav.filter(x=>x!==id):[...fav,id];localStorage.setItem("ufav",JSON.stringify(fav));draw()}
+function cnt(id){db.collection("masters").doc(id).update({calls:firebase.firestore.FieldValue.increment(1)}).catch(()=>{})}
+function rep(id){if(rp.includes(id))return alert("Siz bu usta haqida allaqachon shikoyat qilgansiz");
+ if(confirm("Bu usta haqida shikoyat qilasizmi?")){rp.push(id);localStorage.setItem("urp",JSON.stringify(rp));db.collection("masters").doc(id).update({reports:firebase.firestore.FieldValue.increment(1)}).then(()=>alert("Shikoyat qabul qilindi")).catch(()=>{})}}
+
+/* ---- usta profili ---- */
+function pt(el){const v=el.dataset.v;P.trades=el.checked?[...P.trades,v]:P.trades.filter(x=>x!==v)}
+function profView(){
+ if(!P){const o=ms.find(m=>m.id===uid)||{};P={has:!!o.id,trades:[...(o.trades||[])],region:o.region||REG[0],exp:o.exp||"",price:o.price||"",about:o.about||"",phone2:o.phone2||"",status:o.status||"free",photos:[...(o.photos||[])]}}
+ return `<div class="card"><h3>Ustalik profilim</h3><div class="mu">${E(me.name)} · ${E(me.phone)}</div><br>
+ <label>Qaysi yo'nalishda ustasiz? (bir nechtasini belgilang)</label><div>${TR().map(t=>ck(t,P.trades.includes(t),"pt")).join("")}</div>
+ <button class="g" onclick="addTrade()">+ Yangi yo'nalish qo'shish</button><br><br>
+ <label>Hudud</label><select onchange="P.region=this.value">${REG.map(r=>`<option ${P.region===r?"selected":""}>${r}</option>`).join("")}</select>
+ <label>Tajriba (necha yil)</label><input type="number" min="0" max="60" value="${E(P.exp)}" oninput="P.exp=this.value">
+ <label>Narx (ixtiyoriy, xohlamasangiz bo'sh qoldiring)</label><input placeholder="masalan: kuniga 200 000 yoki 1 m² ga 30 000" value="${E(P.price)}" oninput="P.price=this.value">
+ <label>O'zingiz haqingizda</label><textarea oninput="P.about=this.value">${E(P.about)}</textarea>
+ <label>Qo'shimcha telefon (ixtiyoriy)</label><input type="tel" value="${E(P.phone2)}" oninput="P.phone2=this.value">
+ <label>Holatingiz</label><select onchange="P.status=this.value"><option value="free" ${P.status==="free"?"selected":""}>Bo'shman, ish olaman</option><option value="busy" ${P.status==="busy"?"selected":""}>Bandman</option></select>
+ <label>Qilgan ishlaringiz rasmi (1 tadan 5 tagacha, kamida bitta shart)</label>
+ <div class="pg">${P.photos.map((x,i)=>`<div><img src="${x}"><b onclick="P.photos.splice(${i},1);draw()">✕</b></div>`).join("")}</div>
+ ${P.photos.length<5?`<input type="file" accept="image/*" multiple onchange="addPh(this)">`:""}
+ <button class="ok" onclick="saveProf()">Saqlash</button> ${P.has?`<button class="r" onclick="delProf()">Profilni o'chirish</button>`:""}</div>`}
+const rd=f=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,700/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=i.width*k;c.height=i.height*k;c.getContext("2d").drawImage(i,0,0,c.width,c.height);r(c.toDataURL("image/jpeg",.6))};i.src=fr.result};fr.readAsDataURL(f)});
+async function addPh(el){for(const f of el.files){if(P.photos.length>=5){alert("Ko'pi bilan 5 ta rasm");break}P.photos.push(await rd(f))}el.value="";draw()}
+function addTrade(){let n=(prompt("Yangi yo'nalish nomi (masalan: Gaz ustasi)")||"").trim();if(n.length<3||n.length>40)return;
+ n=n.charAt(0).toUpperCase()+n.slice(1);const ex1=TR().find(t=>t.toLowerCase()===n.toLowerCase());
+ if(ex1){if(!P.trades.includes(ex1))P.trades.push(ex1);return draw()}
+ db.collection("trades").doc(n.toLowerCase().replace(/[^a-z0-9а-я]+/g,"_").slice(0,40)).set({name:n}).catch(()=>{});custom.push(n);P.trades.push(n);draw()}
+async function saveProf(){
+ if(!P.trades.length)return alert("Kamida bitta yo'nalishni belgilang");
+ if(!P.photos.length)return alert("Kamida bitta ish rasmini qo'shing");
+ const d={name:me.name,phone:me.phone,phone2:P.phone2.trim(),trades:P.trades,region:P.region,exp:String(P.exp||""),price:P.price.trim(),about:P.about.trim(),status:P.status,photos:P.photos,owner:uid,source:"Ilova",createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+ if(JSON.stringify(d).length>950000)return alert("Rasmlar juda katta, bir-ikkitasini olib tashlang");
+ try{await db.collection("masters").doc(uid).set(d,{merge:true});P.has=true;alert("Profil saqlandi! Endi mijozlar sizni ko'radi.");tab="home";draw()}catch(e){alert("Xato: "+e.message)}}
+async function delProf(){if(confirm("Profil o'chirilsinmi?")){await db.collection("masters").doc(uid).delete();P=null;draw()}}
+</script></body></html>
