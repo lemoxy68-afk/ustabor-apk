@@ -37,7 +37,7 @@ pre{white-space:pre-wrap;font:inherit;margin:6px 0}
 const firebaseConfig={apiKey:"AIzaSyDOHi3-8hJSdYqL7lb96-wztvtkGDlpsKA",authDomain:"ishtop-caf4b.firebaseapp.com",projectId:"ishtop-caf4b",storageBucket:"ishtop-caf4b.firebasestorage.app",messagingSenderId:"60290763322",appId:"1:60290763322:web:c4676de320e4b1df1c4303"};
 const BASE=["Universal usta","Santexnik","Qumsuvoqchi","Addelchik","Malyar","Elektrik","Bruschatkachi","Beton quyuvchi","Stajkachi","Duradgor","Akfa eshik-deraza ustasi","Tom ustasi","Tunukachi","Svarshik","Kafelchi","Gipsokarton ustasi","Patalokchi","Loy bosuvchi","Pod klyuch usta","Konditsionerchi","Fasad ustasi","Natyajnoy potolok ustasi","Parket / laminat ustasi","Mebel ustasi","Demontaj ustasi","Tozalash xizmati","Beton teshish","Kamera o'rnatuvchi","Kunlik ishchi (xohlagan ish)"];
 const REG=["Namangan shahri","Chortoq","Chust","Kosonsoy","Mingbuloq","Norin","Pop","To'raqo'rg'on","Uchqo'rg'on","Uychi","Yangiqo'rg'on","Boshqa hudud"];
-let me=JSON.parse(localStorage.getItem("um")||"null"),uid=null,ms=[],custom=[],tab="home",ex={},fav=JSON.parse(localStorage.getItem("ufav")||"[]"),rp=JSON.parse(localStorage.getItem("urp")||"[]"),q={t:[],r:[],free:false,src:"",s:"",show:false},P=null,L={role:"client"},db,auth;
+let me=JSON.parse(localStorage.getItem("um")||"null"),uid=null,ms=[],custom=[],tab="home",ex={},fav=JSON.parse(localStorage.getItem("ufav")||"[]"),rp=JSON.parse(localStorage.getItem("urp")||"[]"),q={t:[],r:[],free:false,src:"",s:"",show:false},P=null,L={role:"client"},od=[],O=null,oq={t:[],r:[],mine:true,show:false},db,auth;
 const $=s=>document.querySelector(s),E=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const TR=()=>[...BASE,...custom.filter(c=>!BASE.some(b=>b.toLowerCase()===c.toLowerCase())).sort()];
 const ck=(t,on,f)=>`<label class="ck"><input type="checkbox" data-v="${E(t)}" ${on?"checked":""} onchange="${f}(this)">${E(t)}</label>`;
@@ -48,17 +48,18 @@ try{firebase.initializeApp(firebaseConfig);db=firebase.firestore();auth=firebase
 catch(e){draw()}
 function listen(){
  db.collection("masters").orderBy("createdAt","desc").limit(300).onSnapshot(s=>{ms=s.docs.map(d=>({id:d.id,...d.data()}));
-  if(tab==="prof"){if(P&&!P.has&&ms.some(m=>m.id===uid)){P=null;draw()}}else draw()});
- db.collection("trades").onSnapshot(s=>{custom=s.docs.map(d=>d.data().name).filter(Boolean);if(tab!=="prof")draw()})}
+  if(tab==="prof"){if(P&&!P.has&&ms.some(m=>m.id===uid)){P=null;draw()}}else if(tab!=="new")draw()});
+ db.collection("orders").orderBy("createdAt","desc").limit(300).onSnapshot(s=>{od=s.docs.map(d=>({id:d.id,...d.data()}));if(tab!=="prof"&&tab!=="new")draw()});
+ db.collection("trades").onSnapshot(s=>{custom=s.docs.map(d=>d.data().name).filter(Boolean);if(tab!=="prof"&&tab!=="new")draw()})}
 
 function draw(){
  const nav=[["home","Ustalar"]];
- if(me?.role==="master")nav.push(["prof","Profilim"]);
+ if(me?.role==="master")nav.push(["ord","Buyurtmalar"],["prof","Profilim"]);else if(me)nav.push(["new","+ E'lon"],["mine","E'lonlarim"]);
  nav.push(["fav","Saqlangan"],["me","Hisob"]);
  $("#nav").innerHTML=me?nav.map(([k,t])=>`<a class="${tab===k?"on":""}" onclick="go('${k}')">${t}</a>`).join(""):"";
- $("#app").innerHTML=!me?loginView():({home:homeView,fav:()=>list(ms.filter(m=>fav.includes(m.id)&&alive(m)),"Saqlangan ustalar yo'q"),prof:profView,me:meView})[tab]();
+ $("#app").innerHTML=!me?loginView():({home:homeView,fav:favView,prof:profView,me:meView,ord:ordView,new:newOrd,mine:mineView})[tab]();
 }
-function go(t){tab=t;if(t==="prof")P=null;draw();scrollTo(0,0)}
+function go(t){tab=t;if(t==="prof")P=null;if(t==="new")O=null;draw();scrollTo(0,0)}
 
 /* ---- kirish ---- */
 function loginView(){return `<div class="card"><h3>Xush kelibsiz!</h3><div class="mu">Ro'yxatdan o'tish bir daqiqa</div><br>
@@ -134,4 +135,45 @@ async function saveProf(){
  if(JSON.stringify(d).length>950000)return alert("Rasmlar juda katta, bir-ikkitasini olib tashlang");
  try{await db.collection("masters").doc(uid).set(d,{merge:true});P.has=true;alert("Profil saqlandi! Endi mijozlar sizni ko'radi.");tab="home";draw()}catch(e){alert("Xato: "+e.message)}}
 async function delProf(){if(confirm("Profil o'chirilsinmi?")){await db.collection("masters").doc(uid).delete();P=null;draw()}}
+
+/* ---- "Usta kerak" buyurtmalari ---- */
+const oAlive=o=>(o.reports||0)<7&&o.status!=="closed"&&Date.now()-(o.createdAt?.toMillis?.()||Date.now())<14*864e5;
+const myTr=()=>(ms.find(m=>m.id===uid)||{}).trades||[];
+function ot(el){const v=el.dataset.v;oq.t=el.checked?[...oq.t,v]:oq.t.filter(x=>x!==v);draw()}
+function orr(el){const v=el.dataset.v;oq.r=el.checked?[...oq.r,v]:oq.r.filter(x=>x!==v);draw()}
+function favView(){const a=ms.filter(m=>fav.includes(m.id)&&alive(m)),b=od.filter(o=>fav.includes(o.id)&&oAlive(o));
+ return a.length||b.length?a.map(mCard).join("")+b.map(oCard).join(""):`<div class="card mu">Saqlanganlar yo'q</div>`}
+function ordView(){const mt=myTr();
+ const f=od.filter(o=>oAlive(o)&&(!oq.mine||!mt.length||mt.includes(o.trade))&&(!oq.t.length||oq.t.includes(o.trade))&&(!oq.r.length||oq.r.includes(o.region)));
+ return `<div class="card"><label class="ck"><input type="checkbox" ${oq.mine?"checked":""} onchange="oq.mine=this.checked;draw()">Faqat mening yo'nalishlarim${mt.length?" ("+mt.length+")":""}</label>
+ ${mt.length?"":'<div class="mu">Avval «Profilim» da yo\'nalishlaringizni belgilang, shunda faqat sizga mos ishlar chiqadi.</div>'}
+ <div class="row"><button class="g" onclick="oq.show=!oq.show;draw()">Filtr ▾</button><span class="mu">${f.length} ta ish</span></div>
+ ${oq.show?`<br><label>Yo'nalish</label><div>${TR().map(t=>ck(t,oq.t.includes(t),"ot")).join("")}</div><label>Hudud</label><div>${REG.map(t=>ck(t,oq.r.includes(t),"orr")).join("")}</div>`:""}</div>`
+ +(f.length?f.map(oCard).join(""):`<div class="card mu">Hozircha mos ish yo'q</div>`)}
+function oCard(o){const e=ex[o.id],ph=(o.phone||"").replace(/[^\d+]/g,""),own=o.owner===uid;
+ return `<div class="card"><h3>🛠 ${E(o.title||o.trade+" kerak")}</h3><span class="chip">${E(o.trade)}</span><span class="chip">📍 ${E(o.region)}</span>${o.budget?`<span class="chip">💰 ${E(o.budget)}</span>`:""}
+ <pre>${E(e?o.text:o.text.slice(0,140)+(o.text.length>140?"...":""))}</pre>
+ <div class="row"><button class="g" onclick="ex['${o.id}']=!ex['${o.id}'];draw()">${e?"Yopish":"Batafsil"}</button>
+ ${ph?`<a href="tel:${ph}"><button class="ok">📞 Qo'ng'iroq</button></a><a href="https://t.me/${ph.startsWith("+")?ph:"+"+ph}"><button class="g">Telegram</button></a>`:""}
+ ${o.link?`<a href="${E(o.link)}" target="_blank"><button class="g">Asl e'lon</button></a>`:""}
+ <button class="g" onclick="fv('${o.id}')">${fav.includes(o.id)?"♥":"♡"}</button>${own?"":`<button class="r" onclick="repO('${o.id}')">Shikoyat</button>`}</div>
+ ${o.link?`<div class="mu">Manba: ${E(o.source||"Telegram")}</div>`:""}</div>`}
+function repO(id){if(rp.includes(id))return alert("Siz allaqachon shikoyat qilgansiz");
+ if(confirm("Bu e'lon haqida shikoyat qilasizmi?")){rp.push(id);localStorage.setItem("urp",JSON.stringify(rp));db.collection("orders").doc(id).update({reports:firebase.firestore.FieldValue.increment(1)}).then(()=>alert("Shikoyat qabul qilindi")).catch(()=>{})}}
+function newOrd(){if(!O)O={trade:"",region:REG[0],text:"",budget:"",phone2:""};
+ return `<div class="card"><h3>Usta kerak e'loni</h3><div class="mu">Mos ustalar e'loningizni ko'rib, o'zlari qo'ng'iroq qiladi</div><br>
+ <label>Qanday usta kerak?</label><select onchange="O.trade=this.value"><option value="">Tanlang</option>${TR().map(t=>`<option ${O.trade===t?"selected":""}>${E(t)}</option>`).join("")}</select>
+ <label>Hudud</label><select onchange="O.region=this.value">${REG.map(r=>`<option ${O.region===r?"selected":""}>${r}</option>`).join("")}</select>
+ <label>Nima ish kerak? (tavsif)</label><textarea oninput="O.text=this.value" placeholder="masalan: 3 xonali uyga kafel yotqizish, 40 m²">${E(O.text)}</textarea>
+ <label>Byudjet (ixtiyoriy)</label><input value="${E(O.budget)}" oninput="O.budget=this.value">
+ <label>Qo'shimcha telefon (ixtiyoriy)</label><input type="tel" value="${E(O.phone2)}" oninput="O.phone2=this.value">
+ <button class="ok" onclick="saveO()">E'lon berish</button></div>`}
+async function saveO(){if(!O.trade)return alert("Qanday usta kerakligini tanlang");if(O.text.trim().length<10)return alert("Ishni batafsilroq yozing");
+ try{await db.collection("orders").add({title:O.trade+" kerak",trade:O.trade,region:O.region,text:O.text.trim(),budget:O.budget.trim(),phone:me.phone,phone2:O.phone2.trim(),name:me.name,owner:uid,status:"open",reports:0,source:"Ilova",createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+ alert("E'lon joylandi! Hozir mos ustalar ro'yxatiga o'tamiz.");q.t=[O.trade];q.r=[O.region];q.show=true;O=null;tab="home";draw()}catch(e){alert("Xato: "+e.message)}}
+function mineView(){const a=od.filter(o=>o.owner===uid);
+ return a.length?a.map(o=>`<div class="card"><h3>${E(o.title)}</h3><span class="chip ${o.status==="closed"?"b":"m"}">${o.status==="closed"?"Yopilgan":"Ochiq"}</span><span class="chip">${E(o.trade)}</span><pre>${E(o.text)}</pre>
+ <div class="row"><button class="g" onclick="stO('${o.id}','${o.status==="closed"?"open":"closed"}')">${o.status==="closed"?"Qayta ochish":"Usta topildi (yopish)"}</button><button class="r" onclick="delO('${o.id}')">O'chirish</button></div></div>`).join(""):`<div class="card mu">Hali e'lon bermagansiz</div>`}
+function stO(id,st){db.collection("orders").doc(id).update({status:st})}
+function delO(id){if(confirm("E'lon o'chirilsinmi?"))db.collection("orders").doc(id).delete()}
 </script></body></html>
