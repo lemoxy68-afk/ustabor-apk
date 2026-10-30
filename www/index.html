@@ -37,7 +37,7 @@ pre{white-space:pre-wrap;font:inherit;margin:6px 0}
 const firebaseConfig={apiKey:"AIzaSyDOHi3-8hJSdYqL7lb96-wztvtkGDlpsKA",authDomain:"ishtop-caf4b.firebaseapp.com",projectId:"ishtop-caf4b",storageBucket:"ishtop-caf4b.firebasestorage.app",messagingSenderId:"60290763322",appId:"1:60290763322:web:c4676de320e4b1df1c4303"};
 const BASE=["Universal usta","Santexnik","Qumsuvoqchi","Addelchik","Malyar","Elektrik","Bruschatkachi","Beton quyuvchi","Stajkachi","Duradgor","Akfa eshik-deraza ustasi","Tom ustasi","Tunukachi","Svarshik","Kafelchi","Gipsokarton ustasi","Patalokchi","Loy bosuvchi","Pod klyuch usta","Konditsionerchi","Fasad ustasi","Natyajnoy potolok ustasi","Parket / laminat ustasi","Mebel ustasi","Demontaj ustasi","Tozalash xizmati","Beton teshish","Kamera o'rnatuvchi","Kunlik ishchi (xohlagan ish)"];
 const REG=["Namangan shahri","Chortoq","Chust","Kosonsoy","Mingbuloq","Norin","Pop","To'raqo'rg'on","Uchqo'rg'on","Uychi","Yangiqo'rg'on","Boshqa hudud"];
-let me=JSON.parse(localStorage.getItem("um")||"null"),uid=null,ms=[],custom=[],tab="home",ex={},fav=JSON.parse(localStorage.getItem("ufav")||"[]"),rp=JSON.parse(localStorage.getItem("urp")||"[]"),q={t:[],r:[],free:false,src:"",s:"",show:false},P=null,L={role:"client"},od=[],O=null,oq={t:[],r:[],mine:true,show:false},db,auth;
+let me=JSON.parse(localStorage.getItem("um")||"null"),uid=null,ms=[],custom=[],tab="home",ex={},fav=JSON.parse(localStorage.getItem("ufav")||"[]"),rp=JSON.parse(localStorage.getItem("urp")||"[]"),q={t:[],r:[],free:false,src:"",s:"",show:false},P=null,L={role:"client"},od=[],O=null,oq={t:[],r:[],mine:true,show:false},pf={a:"",b:"",no:true},db,auth;
 const $=s=>document.querySelector(s),E=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const TR=()=>[...BASE,...custom.filter(c=>!BASE.some(b=>b.toLowerCase()===c.toLowerCase())).sort()];
 const ck=(t,on,f)=>`<label class="ck"><input type="checkbox" data-v="${E(t)}" ${on?"checked":""} onchange="${f}(this)">${E(t)}</label>`;
@@ -77,17 +77,17 @@ function meView(){return `<div class="card"><h3>${E(me.name)}</h3><div class="mu
 /* ---- ustalar ro'yxati ---- */
 function qt(el){const v=el.dataset.v;q.t=el.checked?[...q.t,v]:q.t.filter(x=>x!==v);draw()}
 function qr(el){const v=el.dataset.v;q.r=el.checked?[...q.r,v]:q.r.filter(x=>x!==v);draw()}
-function clr(){q.t=[];q.r=[];q.free=false;q.src="";draw()}
+function clr(){q.t=[];q.r=[];q.free=false;q.src="";pf.a="";pf.b="";pf.no=true;draw()}
 function homeView(){
- const f=ms.filter(m=>alive(m)&&(!q.t.length||(m.trades||[]).some(t=>q.t.includes(t)))&&(!q.r.length||q.r.includes(m.region))&&(!q.free||m.status!=="busy")&&(!q.src||(q.src==="tg"?!!m.link:!m.link))&&(!q.s||((m.name||"")+(m.about||"")+(m.trades||[]).join(" ")).toLowerCase().includes(q.s.toLowerCase())));
+ const f=ms.filter(m=>alive(m)&&(!q.t.length||(m.trades||[]).some(t=>q.t.includes(t)))&&(!q.r.length||q.r.includes(m.region))&&(!q.free||m.status!=="busy")&&pOk(m.price)&&(!q.src||(q.src==="tg"?!!m.link:!m.link))&&(!q.s||((m.name||"")+(m.about||"")+(m.trades||[]).join(" ")).toLowerCase().includes(q.s.toLowerCase())));
  f.sort((a,b)=>((a.status==="busy")-(b.status==="busy"))||((b.photos?.length>0)-(a.photos?.length>0)));
- const n=q.t.length+q.r.length+(q.free?1:0)+(q.src?1:0);
+ const n=q.t.length+q.r.length+(q.free?1:0)+(q.src?1:0)+(pf.a||pf.b?1:0);
  return `<div class="card"><input placeholder="Qidirish..." value="${E(q.s)}" onchange="q.s=this.value;draw()" style="margin-bottom:6px">
  <div class="row"><button class="g" onclick="q.show=!q.show;draw()">Filtr${n?" ("+n+")":""} ▾</button>${n?'<button class="g" onclick="clr()">Tozalash</button>':""}<span class="mu">${f.length} ta usta</span></div>
  ${q.show?`<br><label>Yo'nalish (bir nechtasini belgilang)</label><div>${TR().map(t=>ck(t,q.t.includes(t),"qt")).join("")}</div>
  <label>Hudud</label><div>${REG.map(t=>ck(t,q.r.includes(t),"qr")).join("")}</div>
  <label class="ck"><input type="checkbox" ${q.free?"checked":""} onchange="q.free=this.checked;draw()">Faqat bo'sh ustalar</label>
- <label>Manba</label><select onchange="q.src=this.value;draw()"><option value="">Hammasi</option><option value="app" ${q.src==="app"?"selected":""}>Ilovada ro'yxatdan o'tganlar</option><option value="tg" ${q.src==="tg"?"selected":""}>Telegram kanallaridan</option></select>`:""}</div>`+list(f,"Ustalar topilmadi")}
+ ${priceUI()}<label>Manba</label><select onchange="q.src=this.value;draw()"><option value="">Hammasi</option><option value="app" ${q.src==="app"?"selected":""}>Ilovada ro'yxatdan o'tganlar</option><option value="tg" ${q.src==="tg"?"selected":""}>Telegram kanallaridan</option></select>`:""}</div>`+list(f,"Ustalar topilmadi")}
 function list(a,empty){return a.length?a.map(mCard).join(""):`<div class="card mu">${empty}</div>`}
 function mCard(m){const o=ex[m.id],ph=(m.phone||"").replace(/[^\d+]/g,""),im=m.photos||[],own=m.id===uid;
  return `<div class="card"><div class="top">${im[0]?`<img class="th" src="${im[0]}">`:`<div class="th ph0">🔧</div>`}<div style="flex:1"><h3>${E(m.name)}${own?" (siz)":""}</h3>
@@ -144,11 +144,11 @@ function orr(el){const v=el.dataset.v;oq.r=el.checked?[...oq.r,v]:oq.r.filter(x=
 function favView(){const a=ms.filter(m=>fav.includes(m.id)&&alive(m)),b=od.filter(o=>fav.includes(o.id)&&oAlive(o));
  return a.length||b.length?a.map(mCard).join("")+b.map(oCard).join(""):`<div class="card mu">Saqlanganlar yo'q</div>`}
 function ordView(){const mt=myTr();
- const f=od.filter(o=>oAlive(o)&&(!oq.mine||!mt.length||mt.includes(o.trade))&&(!oq.t.length||oq.t.includes(o.trade))&&(!oq.r.length||oq.r.includes(o.region)));
+ const f=od.filter(o=>oAlive(o)&&(!oq.mine||!mt.length||mt.includes(o.trade))&&(!oq.t.length||oq.t.includes(o.trade))&&(!oq.r.length||oq.r.includes(o.region))&&pOk(o.budget));
  return `<div class="card"><label class="ck"><input type="checkbox" ${oq.mine?"checked":""} onchange="oq.mine=this.checked;draw()">Faqat mening yo'nalishlarim${mt.length?" ("+mt.length+")":""}</label>
  ${mt.length?"":'<div class="mu">Avval «Profilim» da yo\'nalishlaringizni belgilang, shunda faqat sizga mos ishlar chiqadi.</div>'}
  <div class="row"><button class="g" onclick="oq.show=!oq.show;draw()">Filtr ▾</button><span class="mu">${f.length} ta ish</span></div>
- ${oq.show?`<br><label>Yo'nalish</label><div>${TR().map(t=>ck(t,oq.t.includes(t),"ot")).join("")}</div><label>Hudud</label><div>${REG.map(t=>ck(t,oq.r.includes(t),"orr")).join("")}</div>`:""}</div>`
+ ${oq.show?`<br><label>Yo'nalish</label><div>${TR().map(t=>ck(t,oq.t.includes(t),"ot")).join("")}</div><label>Hudud</label><div>${REG.map(t=>ck(t,oq.r.includes(t),"orr")).join("")}</div>${priceUI()}`:""}</div>`
  +(f.length?f.map(oCard).join(""):`<div class="card mu">Hozircha mos ish yo'q</div>`)}
 function oCard(o){const e=ex[o.id],ph=(o.phone||"").replace(/[^\d+]/g,""),own=o.owner===uid;
  return `<div class="card"><h3>🛠 ${E(o.title||o.trade+" kerak")}</h3><span class="chip">${E(o.trade)}</span><span class="chip">📍 ${E(o.region)}</span>${o.budget?`<span class="chip">💰 ${E(o.budget)}</span>`:""}
@@ -176,4 +176,14 @@ function mineView(){const a=od.filter(o=>o.owner===uid);
  <div class="row"><button class="g" onclick="stO('${o.id}','${o.status==="closed"?"open":"closed"}')">${o.status==="closed"?"Qayta ochish":"Usta topildi (yopish)"}</button><button class="r" onclick="delO('${o.id}')">O'chirish</button></div></div>`).join(""):`<div class="card mu">Hali e'lon bermagansiz</div>`}
 function stO(id,st){db.collection("orders").doc(id).update({status:st})}
 function delO(id){if(confirm("E'lon o'chirilsinmi?"))db.collection("orders").doc(id).delete()}
+
+/* ---- narx filtri ---- */
+function sumOf(t){if(!t)return null;const s=String(t).toLowerCase().replace(/[ʻ’'`]/g,""),v=[],re=/(\d[\d\s.,]*)\s*(mln|million|млн|ming|минг|мин|k)?/g;let m;
+ while((m=re.exec(s))){let n=parseFloat(m[1].replace(/\s/g,"").replace(",","."));if(isNaN(n))continue;const u=m[2]||"";
+  const u2=u||(n<1000?(s.match(/mln|million|млн|ming|минг/)||[""])[0]:"");
+  if(/mln|million|млн/.test(u2))n*=1e6;else if(/ming|минг|мин|^k$/.test(u2))n*=1e3;else if(n<1000)continue;v.push(n)}
+ return v.length?{min:Math.min(...v),max:Math.max(...v)}:null}
+function pOk(t){const a=+pf.a||0,b=+pf.b||0;if(!a&&!b)return true;const r=sumOf(t);if(!r)return pf.no;return(!b||r.min<=b)&&(!a||r.max>=a)}
+function priceUI(){return `<label>Narx oralig'i (so'm)</label><div class="row"><input type="number" style="flex:1" placeholder="dan" value="${E(pf.a)}" onchange="pf.a=this.value;draw()"><input type="number" style="flex:1" placeholder="gacha" value="${E(pf.b)}" onchange="pf.b=this.value;draw()"></div>
+ <label class="ck"><input type="checkbox" ${pf.no?"checked":""} onchange="pf.no=this.checked;draw()">Narxi ko'rsatilmaganlarni ham ko'rsat</label>`}
 </script></body></html>
